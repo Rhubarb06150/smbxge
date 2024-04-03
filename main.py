@@ -437,11 +437,11 @@ class MainWindow:
             self.custom_graphic.configure(image=self.img)
             self.custom_graphic.im=self.img
             self.index+=1
-            if self.index%(1/int(self.framerate.get()))<=0:
+            if self.index%(int(self.framerate.get()))<=0:
                 self.cur_frame+=1
             if self.cur_frame>=int(self.frames_nb.get()):
                 self.cur_frame=0
-            tm.sleep(1/(int(self.framerate.get()))) 
+            tm.sleep(1/60) 
             if not self.animation_running:
                 self.img=ImageTk.PhotoImage(PIL.Image.open(self.custom_graphic_choosen).resize((int(w*float(self.upscale.get().replace('x',''))),int(h*float(self.upscale.get().replace('x','')))),PIL.Image.NEAREST))
                 self.custom_graphic.configure(image=self.img)
