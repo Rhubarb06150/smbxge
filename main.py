@@ -1,7 +1,8 @@
 from tkinter import messagebox,ttk
-from PIL import Image,ImageTk
+from PIL import Image,ImageTk,ImageOps
 from tkinter import *
 from threading import Thread
+import PIL.IcnsImagePlugin
 from idlelib.tooltip import Hovertip
 from datetime import datetime
 from random import randint
@@ -14,7 +15,6 @@ import bs4
 import cv2
 import re
 import time as tm
-
 
 class MainWindow:
     
@@ -84,6 +84,7 @@ class MainWindow:
         self.root.bind('<Control-s>', lambda event:self.SaveGraphic())
         self.root.bind('<Control-D>', lambda event:self.GetDimension())
         self.root.bind('<Control-d>', lambda event:self.GetDimension())
+        self.root.bind('<Control-u>', lambda event:self.CreateSMB3StyleVer())
         self.root.bind('<Up>', lambda event:self.Scroll('up'))
         self.root.bind('<Down>', lambda event:self.Scroll('down'))
         self.graphic_type.bind('<ComboboxSelected>',self.ShowCurrentGraphic())
@@ -523,10 +524,8 @@ class MainWindow:
         h,w,c=cv2.imread(f'smbxdata\\{self.graphic_type.get().replace("-","")}\\{self.graphic_type.get()}{self.graphic_num.get()}.png').shape
         h_,w_,c=cv2.imread(self.custom_graphic_choosen).shape
         if h==h_ and w==w_:
-            print('same size')
             return True
         else:
-            print('not same size')
             return False
     
     def GetVersion(self):
@@ -540,8 +539,17 @@ class MainWindow:
             except:
                 return None
             
+    def CreateSMB3StyleVer(self):
+        #faut pas oublier de resize
+        h,w,c=cv2.imread(self.custom_graphic_choosen).shape
+        smb3=PIL.Image.new('RGBA',(w,h*2))
+        smb3.paste(PIL.Image.open(self.custom_graphic_choosen),(0,0),mask=PIL.Image.open(self.custom_graphic_choosen))
+        smb3.paste(ImageOps.mirror(PIL.Image.open(self.custom_graphic_choosen)),(0,h),mask=ImageOps.mirror(PIL.Image.open(self.custom_graphic_choosen)))
+        if not os.path.isdir('c:/tmp/'):
+            os.mkdir('c:/tmp/')
+        smb3.save('c:/tmp/e.png')
+            
     def OpenLevelInTextEditor(self):
-        print(self.GetVersion())
         if self.GetVersion()==1:
 
             try:
@@ -590,12 +598,9 @@ class MainWindow:
                                     f.write(line)
                                 else:
                                     found=True
-                                    print('r1')
                                     f.write(f'{self.ind}|0001{self.anim_width.get()},0002{self.anim_height.get()},0003{self.frames_nb.get()},0004{self.framerate.get()}')
                         if not found:
-                            print('r2')
                             self.file=open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','a+')
-                            open('e.txt','w+').write('aaa'+self.frames_nb.get()+'aaa')
                             self.file.write(f'\n{self.ind}|0001{self.anim_width.get()},0002{self.anim_height.get()},0003{self.frames_nb.get()},0004{self.framerate.get()}')
                             self.file.close()
                         
