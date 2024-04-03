@@ -4,6 +4,7 @@ from tkinter import *
 from threading import Thread
 from idlelib.tooltip import Hovertip
 from datetime import datetime
+from random import randint
 import PIL.Image
 import platform
 import os.path
@@ -23,7 +24,7 @@ class MainWindow:
         self.root=Tk()
         self.root.geometry('680x480')
         self.root.minsize(680,480)
-        self.root.title(f'SMBX 1/2 Graphic Editor ({self.version})')
+        self.root.title(f'SMBX Graphic Editor ({self.version})')
         self.root.iconphoto(True,PhotoImage(file='assets/icon.png'))
         self.title_label=Label(text='SMBX Graphic Editor by Rhubarb06150').place(x=2,y=2)
 
@@ -33,7 +34,7 @@ class MainWindow:
         self.custom_graphic_choosen=None
         self.level_path_button=Button(text='Choose level folder',command= lambda: self.ChooselevelPath(),height=1)
         self.level_path_button.place(x=570,y=0)
-        self.open_level_path=Button(text='Open level folder',command= lambda: self.OpenLevelPath(),height=1)
+        self.open_level_path=Button(text='Open level folder',command= lambda: self.OpenLevelPath(),height=1,state='disabled')
         self.open_level_path.place(x=570,y=26)
         self.gte=Label(self.root,text='Graphic you want to edit:').place(x=25,y=50)
         self.graphic_type=ttk.Combobox(self.root,values=['block-','effect-','npc-','background-','background2-'],width=13)
@@ -42,7 +43,7 @@ class MainWindow:
         self.graphic_num=Entry(self.root,width=7)
         self.graphic_num.place(x=120,y=75)
         self.graphic_num.insert(0,"1")
-        self.graphic_select_button=Button(text='Select custom graphic',command= lambda: self.SelectCustomGraphic())
+        self.graphic_select_button=Button(text='Select custom graphic',command= lambda: self.SelectCustomGraphic(),state='disabled')
         self.graphic_select_button.place(x=170,y=70)
 
         self.graphics_frame=Frame(self.root,height=264,width=200,borderwidth=1,relief='sunken')
@@ -58,8 +59,10 @@ class MainWindow:
         self.upscale=ttk.Combobox(self.root,values=['x0.5','x1','x2','x3','x4'],width=4,state='disabled')
         self.upscale.place(x=250,y=46)
         self.upscale.set('x1')
-        self.open_level_in_te=Button(self.root,text='Open level in text editor',command=lambda :self.OpenLevelInTextEditor())
+        self.open_level_in_te=Button(self.root,text='Open level in text editor',command=lambda :self.OpenLevelInTextEditor(),state='disabled')
         self.open_level_in_te.place(x=450,y=80)
+        # self.settings_button=Button(self.root,text='Open settings',command=lambda :SettingsWindow(self))
+        # self.settings_button.place(x=50,y=50)
 
         #IMAGES __________________________________________________________________________________
         
@@ -246,48 +249,82 @@ class MainWindow:
         self.animated_checkbox.configure(state="normal")
         self.upscale.configure(state="readonly")
         self.graphic_type.set(self.RMInt(graphic))
-
-        if self.graphic_type.get()=='block-':
-            self.ind=f'CB|{self.graphic_num.get()}'
-        elif self.graphic_type.get()=='background-':
-            self.ind=f'CT|{self.graphic_num.get()}'
-        elif self.graphic_type.get()=='effect-':
-            self.ind=f'CE|{self.graphic_num.get()}'
+        self.upscale.set('x1')
+        self.animated.set(False)
 
         if self.GetVersion()==1:
-            ln=None
-            with open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','r') as f:
-                lines = f.readlines()
-            for line in lines:
-                if self.ind in line:
-                    ln=line
-                    break
-            if ln!=None:
-                ln=ln.replace(self.ind+'|','')
-                res=ln.split(',')
-                for tag in res:
-                    tag=str(tag)
-                res=tuple(res)
-                for tag in res:
-                    if re.match('^0001',tag):
+
+            if self.graphic_type.get()!='npc-':
+
+                if self.graphic_type.get()=='block-':
+                    self.ind=f'CB|{self.graphic_num.get()}'
+                elif self.graphic_type.get()=='background-':
+                    self.ind=f'CT|{self.graphic_num.get()}'
+                elif self.graphic_type.get()=='effect-':
+                    self.ind=f'CE|{self.graphic_num.get()}'
+                ln=None
+                with open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','r') as f:
+                    lines = f.readlines()
+                for line in lines:
+                    if self.ind in line:
+                        ln=line
+                        break
+                if ln!=None:
+                    ln=ln.replace(self.ind+'|','')
+                    res=ln.split(',')
+                    for tag in res:
+                        tag=str(tag).replace('\n','')
+                    res=tuple(res)
+                    h,w,c=cv2.imread(self.initial_block).shape
+                    if '0001' not in tag:
                         self.anim_width.delete(0,END)
-                        self.anim_width.insert(0,tag.replace('0001',''))
-                    elif re.match('^0002',tag):
+                        self.anim_width.insert(0,w)
+                    if '0002' not in tag:
                         self.anim_height.delete(0,END)
-                        self.anim_height.insert(0,tag.replace('0002',''))
-                    elif re.match('^0003',tag):
-                        self.animated.set(True)
-                        self.frames_nb.delete(0,END)
-                        self.frames_nb.insert(0,tag.replace('0003',''))
-                    elif re.match('^0004',tag):
-                        self.animated.set(True)
+                    if '0004' not in tag:
                         self.framerate.delete(0,END)
-                        self.framerate.insert(0,tag.replace('0004',''))
+                        self.framerate.insert(0,8)
+                    for tag in res:
+                        if re.match('^0001',tag):
+                            self.anim_width.delete(0,END)
+                            self.anim_width.insert(0,tag.replace('0001',''))
+                        elif re.match('^0002',tag):
+                            self.anim_height.delete(0,END)
+                            self.anim_height.insert(0,tag.replace('0002',''))
+                        elif re.match('^0003',tag):
+                            self.animated.set(True)
+                            self.frames_nb.delete(0,END)
+                            self.frames_nb.insert(0,tag.replace('0003',''))
+                        elif re.match('^0004',tag):
+                            self.animated.set(True)
+                            self.framerate.delete(0,END)
+                            self.framerate.insert(0,tag.replace('0004',''))
+            try:
+                lines=open(self.level_path+'\\'+self.graphic_type.get()+self.graphic_num.get()+'.txt').readlines()
+                for line in lines:
+                    if 'gfxwidth=' in line:
+                        self.anim_width.delete(0,END)
+                        self.anim_width.insert(0,line.replace('gfxwidth=','').replace('\n',''))
+                    if 'gfxheight=' in line:
+                        self.anim_height.delete(0,END)
+                        self.anim_height.insert(0,line.replace('gfxheight=','').replace('\n',''))
+                    if 'frames=' in line:
+                        self.frames_nb.delete(0,END)
+                        self.frames_nb.insert(0,line.replace('frames=','').replace('\n',''))
+                        self.animated.set(True)
+                    if 'framespeed=' in line:
+                        self.framerate.delete(0,END)
+                        self.framerate.insert(0,line.replace('framespeed=','').replace('\n',''))
+                        self.animated.set(True)
+            except:
+                pass
         else:
             pass
 
-        self.root.title(f'SMBX 1/2 Graphic Editor ({self.version}) - level: {self.level_name} - graphic: {graphic} (SMBX {self.GetVersion()})')
+        self.root.title(f'SMBX Graphic Editor ({self.version}) - level: {self.level_name} - graphic: {graphic} (SMBX {self.GetVersion()})')
         self.ShowCurrentGraphic()
+        self.ShowAnimationMenu()
+
 
     def OpenLevelPath(self):
 
@@ -395,7 +432,8 @@ class MainWindow:
         self.framerate.configure(state='disabled')
         self.frames_nb.configure(state='disabled')
         while True:
-            self.img=ImageTk.PhotoImage(PIL.Image.open(self.custom_graphic_choosen).crop((0,int(self.cur_frame)*int(self.anim_height.get()),int(self.anim_width.get()),int(self.cur_frame)*int(self.anim_height.get())+int(self.anim_height.get()))))
+            h,w,c=cv2.imread(self.custom_graphic_choosen).shape
+            self.img=ImageTk.PhotoImage(PIL.Image.open(self.custom_graphic_choosen).resize((int(w*float(self.upscale.get().replace('x',''))),int(h*float(self.upscale.get().replace('x','')))),PIL.Image.NEAREST).crop((0,int(self.cur_frame)*int(self.anim_height.get()),int(self.anim_width.get()),int(self.cur_frame)*int(self.anim_height.get())+int(self.anim_height.get()))))
             self.custom_graphic.configure(image=self.img)
             self.custom_graphic.im=self.img
             self.index+=1
@@ -405,7 +443,7 @@ class MainWindow:
                 self.cur_frame=0
             tm.sleep(1/(int(self.framerate.get()))) 
             if not self.animation_running:
-                self.img=ImageTk.PhotoImage(PIL.Image.open(self.custom_graphic_choosen))
+                self.img=ImageTk.PhotoImage(PIL.Image.open(self.custom_graphic_choosen).resize((int(w*float(self.upscale.get().replace('x',''))),int(h*float(self.upscale.get().replace('x','')))),PIL.Image.NEAREST))
                 self.custom_graphic.configure(image=self.img)
                 self.custom_graphic.im=self.img
                 self.animation_button.configure(text='Start animation')
@@ -423,11 +461,13 @@ class MainWindow:
         if self.path!=None:
             self.custom_graphic_choosen=self.path
             self.animated_checkbox.configure(state="normal")
+            self.upscale.configure(state="readonly")    
         self.ShowCurrentGraphic()
 
     def ShowCurrentGraphic(self):
 
         self.path=f'smbxdata\\{self.graphic_type.get().replace("-","")}\\{self.graphic_type.get()}{self.graphic_num.get()}.png'
+        self.initial_block=self.path
 
         try:
             if self.graphic_type.get()=='background2-':
@@ -550,9 +590,12 @@ class MainWindow:
                                     f.write(line)
                                 else:
                                     found=True
+                                    print('r1')
                                     f.write(f'{self.ind}|0001{self.anim_width.get()},0002{self.anim_height.get()},0003{self.frames_nb.get()},0004{self.framerate.get()}')
                         if not found:
+                            print('r2')
                             self.file=open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','a+')
+                            open('e.txt','w+').write('aaa'+self.frames_nb.get()+'aaa')
                             self.file.write(f'\n{self.ind}|0001{self.anim_width.get()},0002{self.anim_height.get()},0003{self.frames_nb.get()},0004{self.framerate.get()}')
                             self.file.close()
                         
@@ -578,7 +621,7 @@ class MainWindow:
                         with open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','r') as f:
                             lines = f.readlines()
                         found=False
-                        with open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','w') as f:
+                        with open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','w') as f:    
                             for line in lines:
                                 if self.ind not in line.strip("\n"):
                                     f.write(line)
@@ -586,11 +629,9 @@ class MainWindow:
                                     found=True
                                     if self.CompareSize()==False:
                                         h,w,c=cv2.imread(self.custom_graphic_choosen).shape
-                                        f.write(f'{self.ind}|0001{int(w*float(self.upscale.get().replace("x","")))},0002{int(h*float(self.upscale.get().replace("x","")))}')
                             if not found:
                                 if self.CompareSize()==False:
                                     h,w,c=cv2.imread(self.custom_graphic_choosen).shape
-                                    f.write(f'\n{self.ind}|0001{int(w*float(self.upscale.get().replace("x","")))},0002{int(h*float(self.upscale.get().replace("x","")))}')
                     else:
                         try:
                             os.remove(f'{self.GoParentFolder(self.level_path)}\\{self.graphic_type.get()}{self.graphic_num.get()}.txt')
@@ -604,7 +645,6 @@ class MainWindow:
                         pass
                 else:
                     msg=messagebox.showerror(title='Error',message="The level file cant be found!")
-
             self.LoadCustomGraphics()
 
     def ChooselevelPath(self):
@@ -613,9 +653,12 @@ class MainWindow:
         if path!=None:
             self.level_path=path
             self.level_name=os.path.basename(self.level_path)
-            self.root.title(f'SMBX 1/2 Graphic Editor ({self.version}) - level: {self.level_name} (SMBX {self.GetVersion()})')
+            self.root.title(f'SMBX Graphic Editor ({self.version}) - level: {self.level_name} (SMBX {self.GetVersion()})')
             self.scroll_down_button.configure(state='normal')
             self.scroll_up_button.configure(state='normal')
+            self.open_level_in_te.configure(state="normal")
+            self.open_level_path.configure(state="normal")
+            self.graphic_select_button.configure(state="normal")
             for frame in self.lis_frames:
                 frame.place_forget()
             self.LoadCustomGraphics()
@@ -643,5 +686,15 @@ class MainWindow:
         content=bs4.BeautifulSoup(content, 'html.parser')
         verspan = content.find(id='smbxgever')
         self.last_ver=verspan=float(verspan.text)
+
+class SettingsWindow:
+
+    def __init__(self,root):
+        self.master=root
+        self.root=Toplevel(self.master.root)
+        self.root.geometry('480x480')
+        self.root.title(f'SMBX Graphic Editor ({self.master.version}) Settings')
+        self.root.resizable(False,False)
+        self.root.mainloop()
 
 Main=MainWindow()
