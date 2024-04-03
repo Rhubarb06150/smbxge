@@ -20,7 +20,7 @@ class MainWindow:
     
     def __init__(self):
         #HEAD_____________________________________________________________________________________
-        self.version=0.11
+        self.version=0.121
         self.root=Tk()
         self.root.geometry('680x480')
         self.root.minsize(680,480)
