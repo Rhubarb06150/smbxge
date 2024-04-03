@@ -63,6 +63,12 @@ class MainWindow:
         self.open_level_in_te.place(x=450,y=80)
         # self.settings_button=Button(self.root,text='Open settings',command=lambda :SettingsWindow(self))
         # self.settings_button.place(x=50,y=50)
+        self.create_smb3_button=Button(self.root,text='Convert to SMB3 style',command=self.CreateSMB3StyleVer,state='disabled')
+        self.create_smb3_button.place(x=265,y=14)
+
+        self.smb3_style=BooleanVar()
+        self.smb3_style_button=Checkbutton(self.root,text='SMB3 Style?',onvalue=True,offvalue=False,var=self.smb3_style)
+        self.smb3_style.set(False)
 
         #IMAGES __________________________________________________________________________________
         
@@ -244,6 +250,11 @@ class MainWindow:
                 self.LoadCustomGraphics()
 
     def LoadGraphic(self,graphic):
+        try:
+            if platform.system()=='Windows':
+                os.remove('c:/tmp/smb3temp.png')
+        except:
+            pass
         self.graphic_num.delete(0,END)
         self.graphic_num.insert(0,self.ClearGraphicName(graphic))
         self.custom_graphic_choosen=self.level_path+'\\'+graphic
@@ -317,6 +328,11 @@ class MainWindow:
                         self.framerate.delete(0,END)
                         self.framerate.insert(0,line.replace('framespeed=','').replace('\n',''))
                         self.animated.set(True)
+                    if 'framestyle=' in line:
+                        if line.replace('framestyle=','')=='0':
+                            self.smb3_style.set(False)
+                        else:
+                            self.smb3_style.set(True)
             except:
                 pass
         else:
@@ -397,6 +413,7 @@ class MainWindow:
             self.frames_nb.place(x=446,y=80)
             self.frames_nb_label.place(x=396,y=80)
             self.animation_button.configure(state='normal')
+            self.smb3_style_button.place(x=306,y=90)
 
         else:
             self.framerate_label.place_forget()
@@ -408,6 +425,7 @@ class MainWindow:
             self.frames_nb.place_forget()
             self.frames_nb_label.place_forget()
             self.animation_button.configure(state='disabled')
+            self.smb3_style_button.place_forget()
 
     def AnimationToggle(self):
         self.animation_running = not self.animation_running
@@ -545,9 +563,15 @@ class MainWindow:
         smb3=PIL.Image.new('RGBA',(w,h*2))
         smb3.paste(PIL.Image.open(self.custom_graphic_choosen),(0,0),mask=PIL.Image.open(self.custom_graphic_choosen))
         smb3.paste(ImageOps.mirror(PIL.Image.open(self.custom_graphic_choosen)),(0,h),mask=ImageOps.mirror(PIL.Image.open(self.custom_graphic_choosen)))
-        if not os.path.isdir('c:/tmp/'):
-            os.mkdir('c:/tmp/')
-        smb3.save('c:/tmp/e.png')
+        if platform.system()=='Windows':
+            if self.custom_graphic_choosen!='c:/tmp/smb3temp.png':
+                if not os.path.isdir('c:/tmp/'):
+                    os.mkdir('c:/tmp/')
+                smb3.save('c:/tmp/smb3temp.png')
+                self.custom_graphic_choosen='c:/tmp/smb3temp.png'
+            else:
+                messagebox.showerror(title='Error',message="To prevent crash you cant convert to SMB3 style\nan already converted to SMB3 Style tile.")
+        self.ShowCurrentGraphic()
             
     def OpenLevelInTextEditor(self):
         if self.GetVersion()==1:
@@ -578,6 +602,10 @@ class MainWindow:
                     if self.graphic_type.get()=='npc-':
                         self.file=open(f'{(self.level_path)}\\{self.graphic_type.get()}{self.graphic_num.get()}.txt','w+')
                         self.file.write(f'gfxwidth={self.anim_width.get()}\ngfxheight={self.anim_height.get()}\nframes={self.frames_nb.get()}\nframespeed={self.framerate.get()}')
+                        if self.smb3_style.get():
+                            self.file.write('\nframestyle=1')
+                        else:
+                            self.file.write('\nframestyle=0')
                         self.file.close()
                     else:
 
@@ -602,6 +630,10 @@ class MainWindow:
                         if not found:
                             self.file=open(self.GoParentFolder(self.level_path)+self.level_name+'.lvl','a+')
                             self.file.write(f'\n{self.ind}|0001{self.anim_width.get()},0002{self.anim_height.get()},0003{self.frames_nb.get()},0004{self.framerate.get()}')
+                            if self.smb3_style.get():
+                                self.file.write('\nframestyle=1')
+                            else:
+                                self.file.write('\nframestyle=0')
                             self.file.close()
                         
                 elif self.GetVersion()==2:
@@ -663,6 +695,7 @@ class MainWindow:
             self.scroll_up_button.configure(state='normal')
             self.open_level_in_te.configure(state="normal")
             self.open_level_path.configure(state="normal")
+            self.create_smb3_button.configure(state="normal")
             self.graphic_select_button.configure(state="normal")
             for frame in self.lis_frames:
                 frame.place_forget()
