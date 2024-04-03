@@ -14,13 +14,14 @@ import urllib.request
 import bs4
 import cv2
 import re
+import json
 import time as tm
 
 class MainWindow:
     
     def __init__(self):
         #HEAD_____________________________________________________________________________________
-        self.version=0.121
+        self.version=0.123
         self.root=Tk()
         self.root.geometry('680x480')
         self.root.minsize(680,480)
@@ -46,6 +47,33 @@ class MainWindow:
         self.graphic_select_button=Button(text='Select custom graphic',command= lambda: self.SelectCustomGraphic(),state='disabled')
         self.graphic_select_button.place(x=170,y=70)
 
+        self.graphics_filter=ttk.Combobox(self.root,values=['All','block-','effect-','npc-','background-','background2-'],width=13,state='disabled')
+        self.graphics_filter_label=Label(self.root,text='View:')
+        self.graphics_filter.set('All')
+
+        #CREATE SETTINGS FILE
+        self.backup=0
+        self.favorite_tile_path=False
+        self.favorite_level_path=False
+        try:
+            self.settings=json.load(open('assets/.settings','r'))
+
+            self.backup=int(self.settings["backups"])
+            self.favorite_tile_path=self.settings["favtilpath"]
+            self.favorite_level_path=self.settings["favlvlpath"]
+
+            if self.favorite_tile_path!="0":
+                if not os.path.exists(self.favorite_tile_path):
+                    a=a
+            if self.favorite_level_path!="0":
+                if not os.path.exists(self.favorite_level_path):
+                    a=a
+            
+        except Exception as e:
+            open('assets/.settings','w+').write('{"backups":"1","favtilpath":"0","favlvlpath":"0"}')
+            self.settings=json.load(open('assets/.settings','r'))
+        
+
         self.graphics_frame=Frame(self.root,height=264,width=200,borderwidth=1,relief='sunken')
         self.graphics_frame.place(x=480,y=216)
         self.scroll_index=0
@@ -61,8 +89,7 @@ class MainWindow:
         self.upscale.set('x1')
         self.open_level_in_te=Button(self.root,text='Open level in text editor',command=lambda :self.OpenLevelInTextEditor(),state='disabled')
         self.open_level_in_te.place(x=450,y=80)
-        # self.settings_button=Button(self.root,text='Open settings',command=lambda :SettingsWindow(self))
-        # self.settings_button.place(x=50,y=50)
+        self.settings_button=Button(self.root,text='Open settings',command=lambda :SettingsWindow(self))
         self.create_smb3_button=Button(self.root,text='Convert to SMB3 style',command=self.CreateSMB3StyleVer,state='disabled')
         self.create_smb3_button.place(x=265,y=14)
 
@@ -97,6 +124,7 @@ class MainWindow:
         if platform.system()=='Windows':
             self.graphics_frame.bind('<MouseWheel>',self.MouseWheel)
         self.upscale.bind('<<ComboboxSelected>>',lambda event:self.ShowCurrentGraphic())
+        self.graphics_filter.bind('<<ComboboxSelected>>',lambda event:self.Scroll(None))
 
         #LIST IMAGES _____________________________________________________________________________
         
@@ -178,9 +206,12 @@ class MainWindow:
         self.graphics_frame.place(x=(self.root.winfo_width()-200),y=(self.root.winfo_height()-264))
         self.scroll_up_button.place(x=self.root.winfo_width()-200,y=(self.root.winfo_height()-290))
         self.scroll_down_button.place(x=self.root.winfo_width()-170,y=(self.root.winfo_height()-290))
+        self.graphics_filter.place(x=self.root.winfo_width()-104,y=(self.root.winfo_height()-290))
+        self.graphics_filter_label.place(x=self.root.winfo_width()-140,y=(self.root.winfo_height()-290))
         self.level_path_button.place(x=self.root.winfo_width()-110,y=0)
         self.open_level_path.place(x=self.root.winfo_width()-110,y=26)
         self.open_level_in_te.place(x=self.root.winfo_width()-136,y=52)
+        self.settings_button.place(x=self.root.winfo_width()-84,y=78)
 
     def RMGraphic(self,index):
         self.matches = ["block-", "effect-", "npc-", "background-", "background2-"]
@@ -246,8 +277,9 @@ class MainWindow:
                     self.scroll_index=0
                 if self.len_graphics-8-self.scroll_index<0:
                     self.scroll_index=self.len_graphics-8
-                    
-                self.LoadCustomGraphics()
+        else:
+            self.scroll_index=0
+        self.LoadCustomGraphics()
 
     def LoadGraphic(self,graphic):
         try:
@@ -360,7 +392,9 @@ class MainWindow:
         for fichier in self.filelist[:]:
             if not(fichier.endswith(".png")) or not any(x in fichier for x in self.matches):
                 self.filelist.remove(fichier)
-                
+        for file in self.filelist[:]:
+            if self.graphics_filter.get() != 'All' and (self.RMInt(file).replace('.png','')) != self.graphics_filter.get():
+                self.filelist.remove(file)
         self.len_graphics=len(self.filelist)
         self.y=0
         self.i=0
@@ -697,26 +731,28 @@ class MainWindow:
             self.open_level_path.configure(state="normal")
             self.create_smb3_button.configure(state="normal")
             self.graphic_select_button.configure(state="normal")
+            self.graphics_filter.configure(state="readonly")
             for frame in self.lis_frames:
                 frame.place_forget()
             self.LoadCustomGraphics()
-            now = datetime.now()
-            today = datetime.today()
-            d1 = today.strftime("%Y_%m_%d")
-            current_time = now.strftime("%H_%M_%S")
-            try:
-                file=open(self.GoParentFolder(self.level_path)+'\\'+self.level_name+'.lvl','r')
-                file2=open('backups\\'+self.level_name+d1+'_'+current_time+'.lvl','w+')
-                for line in file.readlines():
-                    file2.write(line)
-            except Exception as e:
+            if self.backup==1:
+                now = datetime.now()
+                today = datetime.today()
+                d1 = today.strftime("%Y_%m_%d")
+                current_time = now.strftime("%H_%M_%S")
                 try:
-                    file=open(self.GoParentFolder(self.level_path)+'\\'+self.level_name+'.lvlx','r')
-                    file2=open('backups\\'+self.level_name+d1+'_'+current_time+'.lvlx','w+')
+                    file=open(self.GoParentFolder(self.level_path)+'\\'+self.level_name+'.lvl','r')
+                    file2=open('backups\\'+self.level_name+d1+'_'+current_time+'.lvl','w+')
                     for line in file.readlines():
                         file2.write(line)
-                except:
-                    msg=messagebox.showerror(title='Error',message='Backup of this level in impossible, considering this software is still unstable\nconsider not use it please.')
+                except Exception as e:
+                    try:
+                        file=open(self.GoParentFolder(self.level_path)+'\\'+self.level_name+'.lvlx','r')
+                        file2=open('backups\\'+self.level_name+d1+'_'+current_time+'.lvlx','w+')
+                        for line in file.readlines():
+                            file2.write(line)
+                    except:
+                        msg=messagebox.showerror(title='Error',message='Backup of this level in impossible, considering this software is still unstable\nconsider not use it please.')
 
     def GetLastVersion(self):
 
@@ -729,10 +765,12 @@ class SettingsWindow:
 
     def __init__(self,root):
         self.master=root
-        self.root=Toplevel(self.master.root)
+        self.root=Tk()
         self.root.geometry('480x480')
         self.root.title(f'SMBX Graphic Editor ({self.master.version}) Settings')
-        self.root.resizable(False,False)
+        self.root.resizable(False,False) 
+
+        self.root.focus_force()
         self.root.mainloop()
 
 Main=MainWindow()
